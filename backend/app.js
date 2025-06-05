@@ -53,6 +53,7 @@ app.use(session({
     createTableIfMissing: true
   }),
   secret: process.env.SESSION_SECRET || 'fa89627b82d83b153a0312437d71dd38e2abc9a625e716683a9269210da316b6',
+  resave: false,
   saveUninitialized: false,
   cookie: {
     secure: true, // Always true on Vercel
