@@ -2,30 +2,25 @@
   "version": 2,
   "builds": [
     {
-      
-      
-      "src": "package.json",
+      "src": "package.json", 
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
-          "app.js",        
+          "app.js",         
           "../frontend/**", 
-                            
-          
-          "config/**",
-          "controllers/**",
-          "middleware/**",
-          "models/**",
-          "routes/**",
+          "config/**",      
+          "controllers/**", 
+          "middleware/**",  
+          "models/**",      
+          "routes/**",      
           "logger.js"       
         ]
       }
     }
   ],
   "routes": [
-   
     {
-      "src": "^/css/(.*)$", 
+      "src": "^/css/(.*)$",
       "headers": { "Cache-Control": "s-maxage=31536000, stale-while-revalidate" },
       "dest": "/frontend/public/css/$1"
     },
@@ -39,14 +34,7 @@
       "headers": { "Cache-Control": "s-maxage=31536000, stale-while-revalidate" },
       "dest": "/frontend/public/assets/$1"
     },
-    
-    {
-      "src": "/api/:path*",
-      "dest": "app.js"
-    },
-    {
-      "src": "/:path*",
-      "dest": "app.js"
-    }
+    { "src": "/api/:path*", "dest": "app.js" }, 
+    { "src": "/:path*", "dest": "app.js" }     
   ]
 }
