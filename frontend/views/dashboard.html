@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Dashboard</title>
+  <link rel="stylesheet" href="/css/style1.css"> <!-- Ensure consistent styling -->
+</head>
+<body>
+  <header>
+    <h1>Welcome to Your Dashboard</h1>
+    <nav>
+  <a href="#" id="appointmentsLink">Appointments</a>
+  <a href="#" id="logoutLink">Logout</a>
+  </nav>
+  </header>
+
+  <main>
+    <section id="profile">
+      <h2>Your Profile</h2>
+      <div id="userDetails">
+        <!-- User details will be injected here via JavaScript -->
+      </div>
+    </section>
+
+    <section id="appointments">
+      <h2>Your Appointments</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="appointmentDetails">
+          <!-- Appointment details will be injected here via JavaScript -->
+        </tbody>
+      </table>
+    </section>
+    <section id="bookAppointment">
+  <h2>Book New Appointment</h2>
+  <button id="bookButton">Book Appointment</button>
+  <form id="bookingForm" style="display: none;">
+    <form id="appointmentForm">
+  <label>Doctor:
+    <select id="doctorSelect"><option value="">Select Doctor</option></select>
+  </label>
+  <label>Date: <input type="date" id="appointmentDate"></label>
+  <label>Time: <input type="time" id="appointmentTime"></label>
+  <button type="submit">Book</button>
+</form>
+  </form>
+</section>
+  </main>
+
+  <script src="/js/dashboard.js"></script> <!-- JavaScript to fetch and display data -->
+</body>
+</html>
