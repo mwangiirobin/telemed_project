@@ -72,7 +72,7 @@ app.use(morgan('dev')); // Or 'combined' for more details
 // Serve static assets (CSS, client-side JS, images) from frontend/public
 // This makes files inside 'frontend/public/' accessible from the root.
 // e.g., frontend/public/css/style1.css will be available at /css/style1.css
-app.use(express.static(path.join(__dirname, 'frontend', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
 //HEALTH CHECK ROUTE 
 app.get('/health', (req, res) => {
   console.log('Health check executed - should appear in Vercel logs');
@@ -91,7 +91,7 @@ app.use('/api/doctors', doctorRoutes);
 // Serves the main page
 app.get('/', (req, res) => {
   console.log(`GET / route hit. Attempting to send index.html. Path: ${path.join(__dirname, 'frontend', 'index.html')}`);
-  res.sendFile(path.join(__dirname, 'frontend', 'index.html'), (err) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'), (err) => {
     if (err) {
       console.error('Error sending file for / route:', err);
       // More specific error handling for file not found
@@ -109,11 +109,11 @@ app.get('/', (req, res) => {
 // Routes for login, register, dashboard HTML pages
 // Your frontend JS navigates to these paths, so keep them or simplify
 app.get('/frontend/views/login.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'views', 'login.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'login.html'));
 });
 
 app.get('/frontend/views/register.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'views', 'register.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'register.html'));
 });
 
 // Route for the dashboard
@@ -122,7 +122,7 @@ app.get('/dashboard', (req, res) => {
     // Redirect to the correct login page path
     return res.redirect('/frontend/views/login.html');
   }
-  res.sendFile(path.join(__dirname, 'frontend', 'views', 'dashboard.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'dashboard.html'));
 });
 
 // CATCH-ALL ROUTE 
@@ -130,28 +130,28 @@ app.get('/dashboard', (req, res) => {
 app.get('*', (req, res) => {
   // Explicitly handle known HTML files
   if (req.path === '/frontend/views/login.html') {
-    return res.sendFile(path.join(__dirname, 'frontend', 'views', 'login.html'));
+    return res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'login.html'));
   }
   
   if (req.path === '/frontend/views/register.html') {
-    return res.sendFile(path.join(__dirname, 'frontend', 'views', 'register.html'));
+    return res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'register.html'));
   }
   
   if (req.path === '/dashboard') {
     if (!req.session.userId) {
       return res.redirect('/frontend/views/login.html');
     }
-    return res.sendFile(path.join(__dirname, 'frontend', 'views', 'dashboard.html'));
+    return res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'dashboard.html'));
   }
   
   // Serve static files if they exist
-  const filePath = path.join(__dirname, 'frontend', req.path);
+  const filePath = path.join(__dirname, '..', 'frontend', req.path);
   if (fs.existsSync(filePath)) {
     return res.sendFile(filePath);
   }
   
   // Default to index.html for client-side routing
-  res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
 
