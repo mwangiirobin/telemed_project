@@ -77,6 +77,8 @@ app.use(morgan('dev')); // Or 'combined' for more details
 // This makes files inside 'frontend/public/' accessible from the root.
 // e.g., frontend/public/css/style1.css will be available at /css/style1.css
 app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
+// Add explicit route for JS files
+app.use('/js', express.static(path.join(__dirname, '..', 'frontend', 'public', 'js')));
 //HEALTH CHECK ROUTE 
 app.get('/health', (req, res) => {
   console.log('Health check executed - should appear in Vercel logs');
@@ -132,6 +134,11 @@ app.get('/dashboard', (req, res) => {
 // CATCH-ALL ROUTE 
 // Updated catch-all route
 app.get('*', (req, res) => {
+  // Try to serve static assets first
+  const staticPath = path.join(__dirname, '..', 'frontend', 'public', req.path);
+  if (fs.existsSync(staticPath)) {
+    return res.sendFile(staticPath);
+  }
   // Explicitly handle known HTML files
   if (req.path === '/frontend/views/login.html') {
     return res.sendFile(path.join(__dirname, '..', 'frontend', 'views', 'login.html'));

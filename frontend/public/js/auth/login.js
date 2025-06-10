@@ -1,4 +1,5 @@
 //login.js
+document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('loginForm').addEventListener('submit', async function (event) {
   // 1. Prevent the browser from doing a full page reload on form submission.
   event.preventDefault();
@@ -52,4 +53,5 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     console.error('An error occurred during the login fetch request:', error);
     showError('A network error occurred. Please try again later.');
   }
+});
 });
