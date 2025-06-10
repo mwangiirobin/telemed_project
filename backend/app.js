@@ -39,8 +39,12 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate Limiting (your existing code is fine)
-const limiter = rateLimit({ /* ... */ });
+// Rate Limiting 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Temporarily increase to 1000 to avoid being blocked during testing
+  standardHeaders: true,
+  legacyHeaders: false, });
 app.use(limiter);
 
 app.use(express.json());
