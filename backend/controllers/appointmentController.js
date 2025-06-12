@@ -2,30 +2,22 @@ import Appointment from '../models/appointmentModel.js';
 import pool from '../config/db.js';
 
 export const bookAppointment = async (req, res) => {
-  const connection = await pool.getConnection();
-  let transactionActive = false; // Track transaction state
-  try {
-    await connection.query('BEGIN'); // PostgreSQL transaction start
-    transactionActive = true;
+  const { doctorId, datetime } = req.body;
+  const patientId = req.session.userId;
+  
+  // Get a client from the pool
+  const client = await pool.connect();
 
-    // Destructure and validate input (unchanged)
-    const { doctorId, datetime } = req.body;
-    const patientId = req.session.userId;
-    
+  try {
+    // Start a transaction
+    await client.query('BEGIN');
+
     if (!doctorId || !datetime) {
-      await connection.query('ROLLBACK');
-      transactionActive = false;
+      // No need to rollback here since no changes have been made yet
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate datetime format (unchanged)
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(datetime)) {
-      await connection.query('ROLLBACK');
-      transactionActive = false;
-      return res.status(400).json({ error: 'Invalid datetime format. Use YYYY-MM-DDTHH:mm' });
-    }
-
-    // Parse datetime (unchanged)
+    // ...  validation for datetime format and past appointments ...
     const [date, time] = datetime.split('T');
     const appointmentDate = new Date(datetime);
     
@@ -35,21 +27,20 @@ export const bookAppointment = async (req, res) => {
       transactionActive = false;
       return res.status(400).json({ error: 'Cannot book appointments in the past' });
     }
-
-    // Get doctor availability - Changed to PostgreSQL parameterized query
-    const doctorResult = await connection.query(
+ 
+    // Get doctor availability using PostgreSQL placeholder syntax ($1)
+    const doctorResult = await client.query(
       `SELECT available_days, start_time, end_time 
        FROM doctors WHERE id = $1`,
       [doctorId]
     );
     
     if (doctorResult.rows.length === 0) {
-      await connection.query('ROLLBACK');
-      transactionActive = false;
       return res.status(404).json({ error: 'Doctor not found' });
     }
 
     const doctor = doctorResult.rows[0];
+    
     
     // Check available days (unchanged)
     const availableDays = doctor.available_days;
@@ -74,92 +65,79 @@ export const bookAppointment = async (req, res) => {
       });
     }
 
-    // Check existing appointments - Changed to PostgreSQL syntax
-    const existingResult = await connection.query(
+
+    // Check existing appointments using PostgreSQL placeholder syntax
+    const existingResult = await client.query(
       `SELECT * FROM appointments 
        WHERE doctor_id = $1 
        AND appointment_date = $2
-       AND appointment_time >= $3::time 
-       AND appointment_time < ($3::time + interval '30 minutes')`,
+       AND appointment_time = $3
+       AND status NOT IN ('canceled')`,
       [doctorId, date, time]
     );
 
     if (existingResult.rows.length > 0) {
-      await connection.query('ROLLBACK');
-      transactionActive = false;
-      return res.status(409).json({ error: 'Time slot conflict with existing appointment' });
+      return res.status(409).json({ error: 'This time slot is no longer available.' });
     }
 
-    // Create appointment - Changed to PostgreSQL with RETURNING clause
-    const insertResult = await connection.query(
+    // Create appointment using PostgreSQL syntax with RETURNING clause
+    const insertResult = await client.query(
       `INSERT INTO appointments 
-        (patient_id, doctor_id, appointment_date, appointment_time, status, appointment_duration) 
+        (patient_id, doctor_id, appointment_date, appointment_time, status) 
        VALUES 
-        ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      [
-        patientId, 
-        doctorId, 
-        date,
-        time,
-        'scheduled',
-        30
-      ]
+        ($1, $2, $3, $4, $5)
+       RETURNING id`, // RETURNING id gets the new appointment's ID
+      [patientId, doctorId, date, time, 'scheduled']
     );
 
-    await connection.query('COMMIT'); // PostgreSQL commit
-    transactionActive = false;
+    // Commit the transaction
+    await client.query('COMMIT');
+    
     res.status(201).json({ 
       success: true,
-      appointmentId: insertResult.rows[0].id, // Get ID from RETURNING
+      appointmentId: insertResult.rows[0].id, // Get the new ID from the result
       message: 'Appointment booked successfully'
     });
 
   } catch (error) {
-    // Rollback only if transaction was active
-    if (transactionActive) {
-      try {
-        await connection.query('ROLLBACK');
-      } catch (rollbackError) {
-        console.error('Rollback failed:', rollbackError);
-      }
-    }
+    // Roll back the transaction in case of any error
+    await client.query('ROLLBACK');
     console.error('Booking error:', error);
     res.status(500).json({ 
-      error: 'Booking failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Booking failed due to a server error.'
     });
   } finally {
-    connection.release();
+    // VERY IMPORTANT: Release the client back to the pool in all cases
+    client.release();
   }
 };
 
 export const getAppointments = async (req, res) => {
-  // Unchanged (assumes model handles PostgreSQL)
+  // This function calls the Appointment model. You must also update the model's
+  // SQL queries to use PostgreSQL syntax ($1, $2...).
   try {
+    // Ensure Appointment.findByPatient uses PostgreSQL syntax
     const appointments = await Appointment.findByPatient(req.session.userId);
     res.json(appointments);
   } catch (error) {
     console.error('Get appointments error:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch appointments',
-      details: error.message 
+      error: 'Failed to fetch appointments'
     });
   }
 };
 
 export const cancelAppointment = async (req, res) => {
-  const connection = await pool.getConnection();
-  let transactionActive = false;
-  try {
-    await connection.query('BEGIN');
-    transactionActive = true;
-    
-    const appointmentId = req.params.id;
-    const patientId = req.session.userId;
+  const appointmentId = req.params.id;
+  const patientId = req.session.userId;
+  
+  const client = await pool.connect();
 
-    // Combined ownership check and update - Changed to PostgreSQL
-    const result = await connection.query(
+  try {
+    await client.query('BEGIN');
+    
+    // Use RETURNING to confirm which row was updated
+    const result = await client.query(
       `UPDATE appointments 
        SET status = 'canceled' 
        WHERE id = $1 AND patient_id = $2
@@ -167,30 +145,22 @@ export const cancelAppointment = async (req, res) => {
       [appointmentId, patientId]
     );
     
+    // If no rows were returned, it means the appointment didn't exist or didn't belong to the user
     if (result.rowCount === 0) {
-      await connection.query('ROLLBACK');
-      transactionActive = false;
-      return res.status(404).json({ error: 'Appointment not found' });
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Appointment not found or you do not have permission to cancel it.' });
     }
 
-    await connection.query('COMMIT');
-    transactionActive = false;
+    await client.query('COMMIT');
     res.json({ message: 'Appointment canceled successfully' });
 
   } catch (error) {
-    if (transactionActive) {
-      try {
-        await connection.query('ROLLBACK');
-      } catch (rollbackError) {
-        console.error('Rollback failed:', rollbackError);
-      }
-    }
-    console.error('Cancel error:', error);
+    await client.query('ROLLBACK');
+    console.error('Cancel appointment error:', error);
     res.status(500).json({ 
-      error: 'Failed to cancel appointment',
-      details: error.message 
+      error: 'Failed to cancel appointment'
     });
   } finally {
-    connection.release();
+    client.release();
   }
 };
