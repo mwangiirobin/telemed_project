@@ -1,4 +1,4 @@
-// config/db.js
+/// config/db.js
 import pg from 'pg'; // Use 'pg' instead of 'mysql2/promise'
 import dotenv from 'dotenv';
 
@@ -13,8 +13,6 @@ const { Pool } = pg; // Destructure Pool from pg
 // If you use this, you might not need individual host, port, user, etc.
  const pool = new Pool({
    connectionString: process.env.SUPABASE_CONNECTION_STRING,
-   
-   
  });
 
 
