@@ -13,9 +13,7 @@ const { Pool } = pg; // Destructure Pool from pg
 // If you use this, you might not need individual host, port, user, etc.
  const pool = new Pool({
    connectionString: process.env.SUPABASE_CONNECTION_STRING,
-   ssl : {
-    rejectUnauthorized : false
-   }
+   
    
  });
 
