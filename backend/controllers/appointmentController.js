@@ -17,7 +17,7 @@ export const bookAppointment = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // ...  validation for datetime format and past appointments ...
+    // ... (Your validation for datetime format and past appointments is fine) ...
     const [date, time] = datetime.split('T');
     const appointmentDate = new Date(datetime);
     
@@ -27,7 +27,7 @@ export const bookAppointment = async (req, res) => {
       transactionActive = false;
       return res.status(400).json({ error: 'Cannot book appointments in the past' });
     }
- 
+
     // Get doctor availability using PostgreSQL placeholder syntax ($1)
     const doctorResult = await client.query(
       `SELECT available_days, start_time, end_time 
@@ -41,7 +41,7 @@ export const bookAppointment = async (req, res) => {
 
     const doctor = doctorResult.rows[0];
     
-    
+    // ... (Your logic for checking available days and hours is fine) ...
     // Check available days (unchanged)
     const availableDays = doctor.available_days;
     const appointmentDay = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' });
