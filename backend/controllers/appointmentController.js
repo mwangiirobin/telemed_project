@@ -2,10 +2,10 @@ import Appointment from '../models/appointmentModel.js';
 import pool from '../config/db.js';
 
 export const bookAppointment = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   let transactionActive = false; // Track transaction state
   try {
-    await connection.query('BEGIN'); // PostgreSQL transaction start
+    await client.query('BEGIN'); // PostgreSQL transaction start
     transactionActive = true;
 
     // Destructure and validate input (unchanged)
@@ -13,14 +13,14 @@ export const bookAppointment = async (req, res) => {
     const patientId = req.session.userId;
     
     if (!doctorId || !datetime) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     // Validate datetime format (unchanged)
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(datetime)) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(400).json({ error: 'Invalid datetime format. Use YYYY-MM-DDTHH:mm' });
     }
@@ -31,20 +31,20 @@ export const bookAppointment = async (req, res) => {
     
     // Prevent past appointments (unchanged)
     if (appointmentDate < new Date()) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(400).json({ error: 'Cannot book appointments in the past' });
     }
 
     // Get doctor availability - Changed to PostgreSQL parameterized query
-    const doctorResult = await connection.query(
+    const doctorResult = await client.query(
       `SELECT available_days, start_time, end_time 
        FROM doctors WHERE id = $1`,
       [doctorId]
     );
     
     if (doctorResult.rows.length === 0) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(404).json({ error: 'Doctor not found' });
     }
@@ -56,7 +56,7 @@ export const bookAppointment = async (req, res) => {
     const appointmentDay = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' });
     
     if (!availableDays.includes(appointmentDay)) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(409).json({ error: `Doctor not available on ${appointmentDay}s` });
     }
@@ -67,7 +67,7 @@ export const bookAppointment = async (req, res) => {
     const endTime = new Date(`1970-01-01T${doctor.end_time}`);
     
     if (appointmentTime < startTime || appointmentTime > endTime) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(409).json({ 
         error: `Doctor only available between ${doctor.start_time} and ${doctor.end_time}`
@@ -75,7 +75,7 @@ export const bookAppointment = async (req, res) => {
     }
 
     // Check existing appointments - Changed to PostgreSQL syntax
-    const existingResult = await connection.query(
+    const existingResult = await client.query(
       `SELECT * FROM appointments 
        WHERE doctor_id = $1 
        AND appointment_date = $2
@@ -85,13 +85,13 @@ export const bookAppointment = async (req, res) => {
     );
 
     if (existingResult.rows.length > 0) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(409).json({ error: 'Time slot conflict with existing appointment' });
     }
 
     // Create appointment - Changed to PostgreSQL with RETURNING clause
-    const insertResult = await connection.query(
+    const insertResult = await client.query(
       `INSERT INTO appointments 
         (patient_id, doctor_id, appointment_date, appointment_time, status, appointment_duration) 
        VALUES 
@@ -107,7 +107,7 @@ export const bookAppointment = async (req, res) => {
       ]
     );
 
-    await connection.query('COMMIT'); // PostgreSQL commit
+    await client.query('COMMIT'); // PostgreSQL commit
     transactionActive = false;
     res.status(201).json({ 
       success: true,
@@ -119,7 +119,7 @@ export const bookAppointment = async (req, res) => {
     // Rollback only if transaction was active
     if (transactionActive) {
       try {
-        await connection.query('ROLLBACK');
+        await client.query('ROLLBACK');
       } catch (rollbackError) {
         console.error('Rollback failed:', rollbackError);
       }
@@ -149,17 +149,17 @@ export const getAppointments = async (req, res) => {
 };
 
 export const cancelAppointment = async (req, res) => {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   let transactionActive = false;
   try {
-    await connection.query('BEGIN');
+    await client.query('BEGIN');
     transactionActive = true;
     
     const appointmentId = req.params.id;
     const patientId = req.session.userId;
 
     // Combined ownership check and update - Changed to PostgreSQL
-    const result = await connection.query(
+    const result = await client.query(
       `UPDATE appointments 
        SET status = 'canceled' 
        WHERE id = $1 AND patient_id = $2
@@ -168,19 +168,19 @@ export const cancelAppointment = async (req, res) => {
     );
     
     if (result.rowCount === 0) {
-      await connection.query('ROLLBACK');
+      await client.query('ROLLBACK');
       transactionActive = false;
       return res.status(404).json({ error: 'Appointment not found' });
     }
 
-    await connection.query('COMMIT');
+    await client.query('COMMIT');
     transactionActive = false;
     res.json({ message: 'Appointment canceled successfully' });
 
   } catch (error) {
     if (transactionActive) {
       try {
-        await connection.query('ROLLBACK');
+        await client.query('ROLLBACK');
       } catch (rollbackError) {
         console.error('Rollback failed:', rollbackError);
       }
