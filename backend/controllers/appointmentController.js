@@ -17,6 +17,7 @@ export const bookAppointment = async (req, res) => {
       transactionActive = false;
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    
 
     // Validate datetime format (unchanged)
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(datetime)) {
@@ -35,6 +36,11 @@ export const bookAppointment = async (req, res) => {
       transactionActive = false;
       return res.status(400).json({ error: 'Cannot book appointments in the past' });
     }
+    
+    
+    const duration = 30; // Default appointment duration in minutes
+
+    
 
     // Get doctor availability - Changed to PostgreSQL parameterized query
     const doctorResult = await client.query(
@@ -103,7 +109,7 @@ export const bookAppointment = async (req, res) => {
         date,
         time,
         'scheduled',
-        30
+        duration
       ]
     );
 
@@ -130,7 +136,7 @@ export const bookAppointment = async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
