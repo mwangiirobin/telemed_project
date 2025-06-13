@@ -63,9 +63,9 @@ app.use(session({
     secure: true, // Always true on Vercel
     httpOnly: true,
     sameSite: 'none', // Required for cross-origin
-    domain: process.env.NODE_ENV === 'production' 
-      ? '.mwangiistelemed-project.vercel.app'  // YOUR ACTUAL DOMAIN HERE
-      : undefined // Omit domain in development
+    //domain: process.env.NODE_ENV === 'production' 
+     // ? '.mwangiistelemed-project.vercel.app'  // YOUR ACTUAL DOMAIN HERE
+     // : undefined // Omit domain in development
   }
 }));
 
@@ -84,7 +84,13 @@ app.get('/health', (req, res) => {
   console.log('Health check executed - should appear in Vercel logs');
   res.status(200).send('OK');
 });
-
+app.get('/session-check', (req, res) => {
+  res.json({
+    sessionId: req.sessionID,
+    userId: req.session.userId,
+    cookie: req.headers.cookie
+  });
+});
 
 
 // API Routes

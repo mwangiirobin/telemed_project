@@ -50,13 +50,11 @@ export const loginPatient = async (req, res) => {
     const { email, password } = req.body;
     console.log('Login attempt for:', email);
     
-    // PostgreSQL parameterized query
     const result = await client.query(
       'SELECT * FROM patients WHERE email = $1', 
       [email]
     );
     
-    // Check if any rows returned
     if (result.rowCount === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -69,26 +67,37 @@ export const loginPatient = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Set session data
     req.session.userId = user.id;
     req.session.role = 'patient';
     console.log('Session created:', req.session);
 
-    res.json({ 
-      message: 'Login successful',
-      redirect: '/dashboard',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
+    // ADD SESSION SAVE CALLBACK HERE
+    req.session.save(err => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Session error' });
       }
+      
+      // Moved response inside save callback
+      console.log('Session saved successfully');
+      res.json({ 
+        message: 'Login successful',
+        redirect: '/dashboard',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }
+      });
     });
+    
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   } finally {
     client.release();
   }
 };
-
 // logoutPatient remains unchanged as it doesn't use SQL
 export const logoutPatient = (req, res) => {
   req.session.destroy(err => {

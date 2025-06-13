@@ -38,6 +38,13 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     // 4. Check if the login was successful (HTTP status 200-299).
     if (response.ok) {
       console.log('Redirecting to dashboard...'); // Your log message
+      // Add delay to ensure cookie is processed
+  setTimeout(() => {
+    if (data.redirect) {
+      window.location.href = data.redirect;
+    }
+  }, 500); // 500ms delay
+    
 
       // 5. THE FIX: Read the 'redirect' URL from the server's response
       //    and tell the browser to navigate to that page.
